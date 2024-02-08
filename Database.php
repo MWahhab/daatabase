@@ -250,7 +250,8 @@ class Database
      */
     public function deleteAll(string $table): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM {$table}");
+        // truncate is used for this purpose
+        $stmt = $this->pdo->prepare("TRUNCATE {$table}");
         return $stmt->execute();
     }
 
