@@ -42,19 +42,27 @@ class Database
     }
 
     /**
-     * Performs a SELECT query on a specified table.
+     * Performs a SELECT query on a specified table with optional left join.
      *
      * @param string $table The name of the table to query.
      * @param array $columns Optional array of columns to select.
      * @param string $where Optional WHERE clause.
+     * @param int $limit Optional limit for the number of rows to fetch.
+     * @param array $leftJoin Optional array defining left join tables and conditions.
      * @return array An associative array of the query result.
      */
-    public function select(string $table, array $columns = [], string $where = '', int $limit = 0): array
+    public function select(string $table, array $columns = [], string $where = '', int $limit = 0, array $leftJoin = []): array
     {
         if (empty($columns)) {
             $columns = '*';
         } else {
             $columns = implode(',', $columns);
+        }
+
+        // Constructing LEFT JOIN statements if provided
+        $leftJoinStatements = '';
+        foreach ($leftJoin as $joinTable => $joinCondition) {
+            $leftJoinStatements .= " LEFT JOIN {$joinTable} ON {$joinCondition}";
         }
 
         if (!empty($where)) {
@@ -67,7 +75,7 @@ class Database
             $limit = "";
         }
 
-        $query = "SELECT {$columns} FROM {$table} {$where} {$limit}";
+        $query = "SELECT {$columns} FROM {$table} {$leftJoinStatements} {$where} {$limit}";
         $stmt  = $this->pdo->query($query);
 
         if (!empty($limit)) {
