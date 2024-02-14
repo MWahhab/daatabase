@@ -113,6 +113,39 @@ class Database
     }
 
     /**
+     * Inserts multiple rows into a specified table.
+     *
+     * @param string $table The name of the table.
+     * @param array $dataArray Associative array of data to insert (column => value).
+     * @return bool True on success, false on failure.
+     */
+    public function insertMultiple(string $table, array $dataArray): bool
+    {
+        // Extracting column names
+        $columns = implode(',', array_keys($dataArray[0]));
+
+        // Creating placeholders for each row
+        $placeholders = '(:' . implode(', :', array_keys($dataArray[0])) . ')';
+
+        // Building the query
+        $query = "INSERT INTO {$table} ({$columns}) VALUES {$placeholders}";
+
+        // Prepare the statement
+        $stmt = $this->pdo->prepare($query);
+
+        // Bind values for each row
+        foreach ($dataArray as $data) {
+
+            foreach ($data as $key => &$value) {
+                $stmt->bindParam(':' . $key, $value);
+            }
+            $stmt->execute();
+        }
+
+        return true;
+    }
+
+    /**
      * Deletes records from a specified table based on conditions.
      *
      * @param string $table The name of the table.
