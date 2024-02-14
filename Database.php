@@ -30,16 +30,6 @@ class Database
         return $this->pdo;
     }
 
-    /**
-     * Fetches all books from the database.
-     *
-     * @return array An associative array of user data.
-     */
-    public function getAllBooks(): array
-    {
-        $stmt = $this->pdo->query("SELECT * FROM book");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
 
     /**
      * Performs a SELECT query on a specified table with optional left join.
@@ -108,7 +98,6 @@ class Database
         foreach ($data as $key => &$value) {
             $stmt->bindParam(':' . $key, $value);
         }
-
         return $stmt->execute();
     }
 
@@ -119,30 +108,37 @@ class Database
      * @param array $dataArray Associative array of data to insert (column => value).
      * @return bool True on success, false on failure.
      */
-    public function insertMultiple(string $table, array $dataArray): bool
+    public function insertMultiple(string $table, array $dataArray): bool // we can make this actually do multiple inserts in one query..
     {
-        // Extracting column names
         $columns = implode(',', array_keys($dataArray[0]));
+        $query   = "INSERT INTO {$table} ({$columns}) VALUES ";
 
-        // Creating placeholders for each row
-        $placeholders = '(:' . implode(', :', array_keys($dataArray[0])) . ')';
+        $bindValues = [];
+        foreach ($dataArray as $index => $data) {
+            $isLast =  (count($dataArray) - 1) == $index;
 
-        // Building the query
-        $query = "INSERT INTO {$table} ({$columns}) VALUES {$placeholders}";
+            $query .= "(";
+            $i = 0;
+            foreach ($data as $key => $value) {
+                $uniqueBinding = ":" . $key . $index;
+                $isInnerLast   = (count($data) - 1) == $i;
 
-        // Prepare the statement
-        $stmt = $this->pdo->prepare($query);
+                $isInnerLast ? $query .= $uniqueBinding : $query .= $uniqueBinding . ", ";
+                $bindValues[$uniqueBinding] = $value;
 
-        // Bind values for each row
-        foreach ($dataArray as $data) {
-
-            foreach ($data as $key => &$value) {
-                $stmt->bindParam(':' . $key, $value);
+                $i += 1;
             }
-            $stmt->execute();
+
+            $isLast ? $query .= ");" : $query .= "),";
         }
 
-        return true;
+        $stmt = $this->pdo->prepare($query);
+
+        foreach ($bindValues as $boundKey => $boundValue) {
+            $stmt->bindValue($boundKey, $boundValue);
+        }
+
+        return $stmt->execute();
     }
 
     /**
