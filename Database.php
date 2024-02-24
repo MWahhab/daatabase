@@ -256,15 +256,82 @@ class Database
     }
 
     /**
-     * Deletes all records from a specified table.
+     * Truncates all records from a specified table.
      *
-     * @param string $table The name of the table.
-     * @return bool True on successful deletion, false on failure.
+     * @param  string $table The name of the table.
+     * @return bool          True on successful truncation, false on failure.
      */
-    public function deleteAll(string $table): bool
+    public function truncateTable(string $table): bool
     {
-        $stmt = $this->pdo->prepare("DELETE FROM {$table}");
+        $stmt = $this->pdo->prepare("TRUNCATE TABLE {$table}");
         return $stmt->execute();
+    }
+
+    /**
+     * Drops a specified table.
+     *
+     * @param string $table The name of the table to drop.
+     * @return bool True on successful table drop, false on failure.
+     */
+    public function dropTable(string $table): bool
+    {
+        $stmt = $this->pdo->prepare("DROP TABLE {$table}");
+        return $stmt->execute();
+    }
+
+    /**
+     * Backs up the specified table by creating a copy of its structure and data.
+     *
+     * @param  string $tableName       The name of the table to back up.
+     * @param  string $backupTableName The name of the backup table.
+     * @return bool                    True on successful backup, false on failure.
+     */
+    public function backup(string $tableName, string $backupTableName): bool {
+        $uniqueTableName = $backupTableName . '_backup';
+
+        $query = "CREATE TABLE {$uniqueTableName} LIKE {$tableName}; 
+                  INSERT INTO {$uniqueTableName} SELECT * FROM {$tableName};";
+
+        $stmt = $this->pdo->prepare($query);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Merges data from one table into another table within the same database,
+     * checking for merge conflicts based on a specified column.
+     *
+     * @param string $sourceTable The name of the source table.
+     * @param string $targetTable The name of the target table.
+     * @param string|null $mergeColumn (Optional) The column used for merging and checking conflicts.
+     * @return bool True on successful merge, false on failure.
+     */
+    public function mergeTables(string $sourceTable, string $targetTable, ?string $mergeColumn = null): bool
+    {
+        $sourceData = $this->select($sourceTable);
+
+        $targetData = $this->select($targetTable);
+
+        $indexedTargetData = [];
+        if ($mergeColumn !== null) {
+            foreach ($targetData as $row) {
+                $indexedTargetData[$row[$mergeColumn]] = $row;
+            }
+        }
+
+        foreach ($sourceData as $sourceRow) {
+            if ($mergeColumn !== null && isset($sourceRow[$mergeColumn])) {
+                $mergeValue = $sourceRow[$mergeColumn];
+
+                if (isset($indexedTargetData[$mergeValue])) {
+                    continue;
+                }
+            }
+
+            $this->insert($targetTable, $sourceRow);
+        }
+
+        return true;
     }
 
 }
