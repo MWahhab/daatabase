@@ -2,6 +2,7 @@
 
 namespace database;
 
+use mysql_xdevapi\Exception;
 use PDO;
 
 class Database
@@ -30,55 +31,52 @@ class Database
         return $this->pdo;
     }
 
-    /**
-     * Performs a SELECT query on a specified table with optional left join.
-     *
-     * @param string $table The name of the table to query.
-     * @param array $columns Optional array of columns to select.
-     * @param string $where Optional WHERE clause.
-     * @param int $limit Optional limit for the number of rows to fetch.
-     * @param array $leftJoin Optional array defining left join tables and conditions.
-     * @return array An associative array of the query result.
-     */
     public function select(string $table, array $columns = [], string $where = '', int $limit = 0, array $leftJoin = []): array
     {
-        if (empty($columns)) {
-            $columns = '*';
-        } else {
-            $columns = implode(',', $columns);
+        try {
+            if (empty($columns)) {
+                $columns = '*';
+            } else {
+                $columns = implode(',', $columns);
+            }
+
+            // Constructing LEFT JOIN statements if provided
+            $leftJoinStatements = '';
+            foreach ($leftJoin as $joinTable => $joinCondition) {
+                $leftJoinStatements .= " LEFT JOIN {$joinTable} ON {$joinCondition}";
+            }
+
+            if (!empty($where)) {
+                $where = "WHERE " . $where;
+            }
+
+            if ($limit > 0) {
+                $limit = "LIMIT {$limit}";
+            } else {
+                $limit = "";
+            }
+
+            $query = "SELECT {$columns} FROM {$table} {$leftJoinStatements} {$where} {$limit}";
+            $stmt  = $this->pdo->query($query);
+
+            if (!empty($limit)) {
+                $results = $stmt->fetch(PDO::FETCH_ASSOC);
+            } else {
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            if (!empty($results)) {
+                return $results;
+            }
+
+            return [];
+        } catch (\PDOException $e) {
+            // Handle any exceptions that occur during the query execution
+            // For now, simply return an empty array
+            return [];
         }
-
-        // Constructing LEFT JOIN statements if provided
-        $leftJoinStatements = '';
-        foreach ($leftJoin as $joinTable => $joinCondition) {
-            $leftJoinStatements .= " LEFT JOIN {$joinTable} ON {$joinCondition}";
-        }
-
-        if (!empty($where)) {
-            $where = "WHERE " . $where;
-        }
-
-        if ($limit > 0) {
-            $limit = "LIMIT {$limit}";
-        } else {
-            $limit = "";
-        }
-
-        $query = "SELECT {$columns} FROM {$table} {$leftJoinStatements} {$where} {$limit}";
-        $stmt  = $this->pdo->query($query);
-
-        if (!empty($limit)) {
-            $results = $stmt->fetch(PDO::FETCH_ASSOC);
-        } else {
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        if (!empty($results)) {
-            return $results;
-        }
-
-        return [];
     }
+
 
     /**
      * Inserts data into a specified table.
@@ -333,5 +331,65 @@ class Database
 
         return true;
     }
+
+    /**
+     * Retrieves column names and mapped data types from a specified table.
+     *
+     * @param string $table The name of the table.
+     * @return array An associative array containing column names as keys and mapped data types as values.
+     */
+    public function getColumnNamesWithMappedTypes(string $table): array
+    {
+        $query = "SHOW COLUMNS FROM {$table}";
+        $stmt = $this->pdo->query($query);
+        $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $columnsWithMappedTypes = [];
+        foreach ($columns as $column) {
+            // Extracting data type from column type string
+            preg_match('/^([a-z]+)/', $column['Type'], $matches);
+            $dataType = $matches[1];
+
+            // Mapping MySQL data types to PHP data types
+            switch ($dataType) {
+                case 'tinyint':
+                case 'smallint':
+                case 'mediumint':
+                case 'int':
+                case 'bigint':
+                    $mappedType = 'integer';
+                    break;
+                case 'float':
+                case 'double':
+                case 'decimal':
+                    $mappedType = 'float';
+                    break;
+                case 'char':
+                case 'varchar':
+                case 'binary':
+                case 'varbinary':
+                case 'blob':
+                case 'text':
+                case 'enum':
+                case 'set':
+                    $mappedType = 'string';
+                    break;
+                case 'date':
+                case 'time':
+                case 'datetime':
+                case 'timestamp':
+                case 'year':
+                    $mappedType = 'string'; // These types can also be represented as strings
+                    break;
+                default:
+                    $mappedType = 'string'; // Default to string if no mapping found
+            }
+
+            $columnsWithMappedTypes[$column['Field']] = $mappedType;
+        }
+
+        return $columnsWithMappedTypes;
+    }
+
 
 }
