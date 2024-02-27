@@ -31,6 +31,17 @@ class Database
         return $this->pdo;
     }
 
+
+    /**
+     * Performs a SELECT query on a specified table with optional left join.
+     *
+     * @param string $table The name of the table to query.
+     * @param array $columns Optional array of columns to select.
+     * @param string $where Optional WHERE clause.
+     * @param int $limit Optional limit for the number of rows to fetch.
+     * @param array $leftJoin Optional array defining left join tables and conditions.
+     * @return array An associative array of the query result.
+     */
     public function select(string $table, array $columns = [], string $where = '', int $limit = 0, array $leftJoin = []): array
     {
         try {
@@ -105,7 +116,7 @@ class Database
      * @param array $dataArray Associative array of data to insert (column => value).
      * @return bool True on success, false on failure.
      */
-    public function insertMultiple(string $table, array $dataArray): bool
+    public function insertMultiple(string $table, array $dataArray): bool // we can make this actually do multiple inserts in one query..
     {
         $columns = implode(',', array_keys($dataArray[0]));
         $query   = "INSERT INTO {$table} ({$columns}) VALUES ";
@@ -273,7 +284,7 @@ class Database
      */
     public function dropTable(string $table): bool
     {
-        $stmt = $this->pdo->prepare("DROP TABLE {$table}");
+        $stmt = $this->pdo->prepare("DROP TABLE IF EXISTS {$table}");
         return $stmt->execute();
     }
 
@@ -351,39 +362,12 @@ class Database
             $dataType = $matches[1];
 
             // Mapping MySQL data types to PHP data types
-            switch ($dataType) {
-                case 'tinyint':
-                case 'smallint':
-                case 'mediumint':
-                case 'int':
-                case 'bigint':
-                    $mappedType = 'integer';
-                    break;
-                case 'float':
-                case 'double':
-                case 'decimal':
-                    $mappedType = 'float';
-                    break;
-                case 'char':
-                case 'varchar':
-                case 'binary':
-                case 'varbinary':
-                case 'blob':
-                case 'text':
-                case 'enum':
-                case 'set':
-                    $mappedType = 'string';
-                    break;
-                case 'date':
-                case 'time':
-                case 'datetime':
-                case 'timestamp':
-                case 'year':
-                    $mappedType = 'string'; // These types can also be represented as strings
-                    break;
-                default:
-                    $mappedType = 'string'; // Default to string if no mapping found
-            }
+            $mappedType = match ($dataType) {
+                'tinyint'                                => 'tinyint',
+                'smallint', 'mediumint', 'int', 'bigint' => 'integer',
+                'float', 'double', 'decimal'             => 'float',
+                default => 'string',
+            };
 
             $columnsWithMappedTypes[$column['Field']] = $mappedType;
         }
