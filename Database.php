@@ -31,6 +31,17 @@ class Database
         return $this->pdo;
     }
 
+
+    /**
+     * Performs a SELECT query on a specified table with optional left join.
+     *
+     * @param string $table The name of the table to query.
+     * @param array $columns Optional array of columns to select.
+     * @param string $where Optional WHERE clause.
+     * @param int $limit Optional limit for the number of rows to fetch.
+     * @param array $leftJoin Optional array defining left join tables and conditions.
+     * @return array An associative array of the query result.
+     */
     public function select(string $table, array $columns = [], string $where = '', int $limit = 0, array $leftJoin = []): array
     {
         try {
@@ -105,7 +116,7 @@ class Database
      * @param array $dataArray Associative array of data to insert (column => value).
      * @return bool True on success, false on failure.
      */
-    public function insertMultiple(string $table, array $dataArray): bool
+    public function insertMultiple(string $table, array $dataArray): bool // we can make this actually do multiple inserts in one query..
     {
         $columns = implode(',', array_keys($dataArray[0]));
         $query   = "INSERT INTO {$table} ({$columns}) VALUES ";
