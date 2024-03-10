@@ -8,8 +8,7 @@ putenv("DB_USER=*");
 putenv("DB_PASS=*");
 
 require_once ("Database.php");
-require_once ("C:\\xampp\htdocs\abstractFactory\Factory.php");
-require_once ("C:\\xampp\htdocs\abstractFactory\AbstractTable.php");
+require_once ("C:\\xampp\htdocs\weatherForecast\ForecastController.php");
 
 try {
     $connection = new Database();
@@ -17,4 +16,4 @@ try {
     die($e->getMessage());
 }
 
-$factory = new Factory($connection);
+$controller = new \weatherForecast\ForecastController($connection);

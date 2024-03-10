@@ -375,5 +375,34 @@ class Database
         return $columnsWithMappedTypes;
     }
 
+    /**
+     * Creates a table with the specified name and columns.
+     *
+     * @param string $tableName The name of the table to create.
+     * @param array $columns An associative array of column definitions (column name => column type).
+     * @return bool True on successful table creation, false on failure.
+     */
+    public function createTable(string $tableName, array $columns): bool
+    {
+        try {
+            $columnDefinitions = [];
+            foreach ($columns as $columnName => $columnType) {
+                $columnDefinitions[] = "$columnName $columnType";
+            }
+
+            $columnDefinitionsString = implode(', ', $columnDefinitions);
+
+            $query = "CREATE TABLE IF NOT EXISTS {$tableName} (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    {$columnDefinitionsString}
+                 )";
+
+            $stmt = $this->pdo->prepare($query);
+            return $stmt->execute();
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
 
 }
